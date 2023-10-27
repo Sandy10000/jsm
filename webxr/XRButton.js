@@ -1,10 +1,10 @@
-class VRButton {
+class XRButton {
 
-	static createButton( renderer ) {
+	static createButton( renderer, sessionInit = {} ) {
 
 		const button = document.createElement( 'button' );
 
-		function showEnterVR( /*device*/ ) {
+		function showStartXR( mode ) {
 
 			let currentSession = null;
 
@@ -13,7 +13,8 @@ class VRButton {
 				session.addEventListener( 'end', onSessionEnded );
 
 				await renderer.xr.setSession( session );
-				button.textContent = 'EXIT VR';
+
+				button.textContent = 'STOP XR';
 
 				currentSession = session;
 
@@ -23,7 +24,7 @@ class VRButton {
 
 				currentSession.removeEventListener( 'end', onSessionEnded );
 
-				button.textContent = 'ENTER VR';
+				button.textContent = 'START XR';
 
 				currentSession = null;
 
@@ -37,7 +38,7 @@ class VRButton {
 			button.style.left = 'calc(50% - 50px)';
 			button.style.width = '100px';
 
-			button.textContent = 'ENTER VR';
+			button.textContent = 'START XR';
 
 			button.onmouseenter = function () {
 
@@ -55,15 +56,19 @@ class VRButton {
 
 				if ( currentSession === null ) {
 
-					// WebXR's requestReferenceSpace only works if the corresponding feature
-					// was requested at session creation time. For simplicity, just ask for
-					// the interesting ones as optional features, but be aware that the
-					// requestReferenceSpace call will fail if it turns out to be unavailable.
-					// ('local' is always available for immersive sessions and doesn't need to
-					// be requested separately.)
+					const sessionOptions = {
+						...sessionInit,
+						optionalFeatures: [
+							'local-floor',
+							'bounded-floor',
+							'hand-tracking',
+							'layers',
+							...( sessionInit.optionalFeatures || [] )
+						],
+					};
 
-					const sessionInit = { optionalFeatures: [ 'local-floor', 'bounded-floor', 'hand-tracking', 'layers' ] };
-					navigator.xr.requestSession( 'immersive-vr', sessionInit ).then( onSessionStarted );
+					navigator.xr.requestSession( mode, sessionOptions )
+						.then( onSessionStarted );
 
 				} else {
 
@@ -90,21 +95,21 @@ class VRButton {
 
 		}
 
-		function showWebXRNotFound() {
+		function showXRNotSupported() {
 
 			disableButton();
 
-			button.textContent = 'VR NOT SUPPORTED';
+			button.textContent = 'XR NOT SUPPORTED';
 
 		}
 
-		function showVRNotAllowed( exception ) {
+		function showXRNotAllowed( exception ) {
 
 			disableButton();
 
 			console.warn( 'Exception when trying to call xr.isSessionSupported', exception );
 
-			button.textContent = 'VR NOT ALLOWED';
+			button.textContent = 'XR NOT ALLOWED';
 
 		}
 
@@ -127,22 +132,38 @@ class VRButton {
 
 		if ( 'xr' in navigator ) {
 
-			button.id = 'VRButton';
+			button.id = 'XRButton';
 			button.style.display = 'none';
 
 			stylizeElement( button );
 
-			navigator.xr.isSessionSupported( 'immersive-vr' ).then( function ( supported ) {
+			navigator.xr.isSessionSupported( 'immersive-ar' )
+				.then( function ( supported ) {
 
-				supported ? showEnterVR() : showWebXRNotFound();
+					if ( supported ) {
 
-				if ( supported && VRButton.xrSessionIsGranted ) {
+						showStartXR( 'immersive-ar' );
 
-					button.click();
+					} else {
 
-				}
+						navigator.xr.isSessionSupported( 'immersive-vr' )
+							.then( function ( supported ) {
 
-			} ).catch( showVRNotAllowed );
+								if ( supported ) {
+
+									showStartXR( 'immersive-vr' );
+
+								} else {
+
+									showXRNotSupported();
+
+								}
+
+							} ).catch( showXRNotAllowed );
+
+					}
+
+				} ).catch( showXRNotAllowed );
 
 			return button;
 
@@ -174,27 +195,6 @@ class VRButton {
 
 	}
 
-	static registerSessionGrantedListener() {
-
-		if ( typeof navigator !== 'undefined' && 'xr' in navigator ) {
-
-			// WebXRViewer (based on Firefox) has a bug where addEventListener
-			// throws a silent exception and aborts execution entirely.
-			if ( /WebXRViewer\//i.test( navigator.userAgent ) ) return;
-
-			navigator.xr.addEventListener( 'sessiongranted', () => {
-
-				VRButton.xrSessionIsGranted = true;
-
-			} );
-
-		}
-
-	}
-
 }
 
-VRButton.xrSessionIsGranted = false;
-VRButton.registerSessionGrantedListener();
-
-export { VRButton };
+export { XRButton };

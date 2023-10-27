@@ -1,15 +1,15 @@
 /**
- * Gamma Correction Shader
- * http://en.wikipedia.org/wiki/gamma_correction
+ * Exposure shader
  */
 
-const GammaCorrectionShader = {
+const ExposureShader = {
 
-	name: 'GammaCorrectionShader',
+	name: 'ExposureShader',
 
 	uniforms: {
 
-		'tDiffuse': { value: null }
+		'tDiffuse': { value: null },
+		'exposure': { value: 1.0 }
 
 	},
 
@@ -26,18 +26,19 @@ const GammaCorrectionShader = {
 
 	fragmentShader: /* glsl */`
 
+		uniform float exposure;
+
 		uniform sampler2D tDiffuse;
 
 		varying vec2 vUv;
 
 		void main() {
 
-			vec4 tex = texture2D( tDiffuse, vUv );
-
-			gl_FragColor = sRGBTransferOETF( tex );
+			gl_FragColor = texture2D( tDiffuse, vUv );
+			gl_FragColor.rgb *= exposure;
 
 		}`
 
 };
 
-export { GammaCorrectionShader };
+export { ExposureShader };
